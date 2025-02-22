@@ -13,7 +13,7 @@ export class UserService {
     private preferenceService: PreferenceService,
   ) {}
 
-  async attachMenteeToMentor(mentorId: string, menteeId: string) {
+  async attachMenteeToMentorLegacy(mentorId: string, menteeId: string) {
     // Check if mentee already exists
     if (mentorToMenteeMapDb[mentorId] == null) {
       Logger.warn('MentorId not found, add a mentor first.');
@@ -46,7 +46,7 @@ export class UserService {
       createdMenteeEntity.id,
     );
 
-    return newMentee;
+    return createdMenteeEntity.toMentee();
   }
 
   generateNewMenteeId(): string {
@@ -54,7 +54,7 @@ export class UserService {
     return 'mentee-' + newIndex;
   }
 
-  deleteMentee(mentorId: string, menteeId: string) {
+  deleteMenteeLegacy(mentorId: string, menteeId: string) {
     // Check if mentee already exists
     if (mentorToMenteeMapDb[mentorId] == null) {
       Logger.warn('MentorId not found, add a mentor first.');
@@ -68,7 +68,7 @@ export class UserService {
     Logger.log(`Deleted mentee - ${mentorId} - ${menteeId}`);
   }
 
-  getAllMentees(mentorId: string) {
+  getAllMenteesLegacy(mentorId: string) {
     // Check if mentee already exists
     if (mentorToMenteeMapDb[mentorId] == null) {
       Logger.warn('MentorId not found, add a mentor first.');
@@ -99,7 +99,9 @@ export class UserService {
 
     // TODO: seed default preferences for mentor
 
-    return this.usersRepository.createUser(newMentor, userName, pass);
+    return (
+      await this.usersRepository.createUser(newMentor, userName, pass)
+    ).toMentor();
   }
 
   async getMentor(mentorId: string) {
@@ -108,5 +110,16 @@ export class UserService {
 
   async getUserByUsername(userName: string) {
     return this.usersRepository.findUserByUserName(userName);
+  }
+
+  async getAllMentors() {
+    return this.usersRepository.findAllMentors();
+  }
+
+  async getMenteesForMentor(mentorId: string): Promise<Mentee[]> {
+    const mentor = await this.getMentor(mentorId);
+    return mentor.outgoingUserRelations.map((relation) =>
+      relation.toUser.toMentee(),
+    );
   }
 }
