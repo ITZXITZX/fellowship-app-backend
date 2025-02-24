@@ -12,6 +12,9 @@ import { SeederModule } from './modules/seed/seeder.module';
 import { UserModule } from './modules/users/user.module';
 import { AIService } from './services/ai.service';
 import { MeetingRecommendationService } from './services/meeting-recommendation-legacy.service';
+import { SchoolCalendarModule } from './modules/school-calendar/school-calendar.module';
+import { SchoolCalendarController } from './modules/school-calendar/school-calendar.controller';
+import { ScraperService } from './modules/school-calendar/scraper.service';
 
 @Module({
   imports: [
@@ -33,8 +36,9 @@ import { MeetingRecommendationService } from './services/meeting-recommendation-
     DiscoveryModule,
     SeederModule,
     MeetingRecommendationModule,
+    SchoolCalendarModule, //TEST
   ],
-  controllers: [ChatController, MeetingController],
-  providers: [AIService, MeetingRecommendationService],
+  controllers: [ChatController, MeetingController, SchoolCalendarController],
+  providers: [AIService, MeetingRecommendationService, ScraperService],
 })
 export class AppModule {}
