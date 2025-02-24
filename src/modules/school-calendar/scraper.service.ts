@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import * as moment from 'moment'; 
+
 
 @Injectable()
 export class ScraperService {
@@ -29,4 +31,70 @@ export class ScraperService {
       throw new Error('Failed to scrape academic dates');
     }
   }
+
+  async scrapeFilteredAcademicDates(): Promise<string[]> {
+    const eventsAndDates = await this.scrapeAcademicDates();
+
+    if (eventsAndDates.length === 0) {
+      return [];
+    }
+
+    // Find full academic year range
+    const allDates = eventsAndDates.map(([_, date]) => date);
+    const firstDate = moment(allDates[0], "D MMM YYYY"); // Start of the academic year
+    const lastDate = moment(allDates[allDates.length - 1], "D MMM YYYY"); // End of the academic year
+
+    // Find vacation periods
+    const vacationRanges = eventsAndDates
+      .filter(([event, _]) => event.toLowerCase() === "vacation")
+      .map(([_, date]) => this.parseDateRange(date)); // Convert vacation date string to moment range
+
+    // Calculate non-vacation periods
+    const availablePeriods = this.calculateNonVacationPeriods(firstDate, lastDate, vacationRanges);
+
+    return availablePeriods.map(([start, end]) => `${start.format("D MMM YYYY")} - ${end.format("D MMM YYYY")}`);
+  }
+
+  private parseDateRange(dateStr: string): [moment.Moment, moment.Moment] {
+    const [startStr, endStr] = dateStr.split(' - ');
+    return [moment(startStr, "D MMM YYYY"), moment(endStr, "D MMM YYYY")];
+  }
+
+  private calculateNonVacationPeriods(
+    academicStart: moment.Moment,
+    academicEnd: moment.Moment,
+    vacations: [moment.Moment, moment.Moment][]
+  ): [moment.Moment, moment.Moment][] {
+    const availablePeriods: [moment.Moment, moment.Moment][] = [];
+    let currentStart = academicStart.clone();
+
+    for (const [vacStart, vacEnd] of vacations) {
+      if (currentStart.isBefore(vacStart)) {
+        availablePeriods.push([currentStart, vacStart.clone().subtract(1, 'days')]); // Period before vacation
+      }
+      currentStart = vacEnd.clone().add(1, 'days'); // Resume after vacation
+    }
+
+    // Add the last remaining period
+    if (currentStart.isBefore(academicEnd)) {
+      availablePeriods.push([currentStart, academicEnd]);
+    }
+
+    return availablePeriods;
+  }
+
+
+  // // Method 2: Filter out "Vacation" events & combine all dates
+  // async scrapeFilteredAcademicDates(): Promise<string> {
+  //   const eventsAndDates = await this.scrapeAcademicDates();
+    
+  //   // Filter out "Vacation" rows
+  //   const filteredDates = eventsAndDates
+  //     .filter(([event, _]) => event.toLowerCase() !== "vacation")
+  //     .map(([_, date]) => date); // Extract only the dates
+
+  //   // Combine dates into a single string (comma-separated)
+  //   return filteredDates.join(', ');
+  // }
+
 }
